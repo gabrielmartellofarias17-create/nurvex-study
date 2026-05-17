@@ -1300,7 +1300,7 @@ h3 { font-size: 1.2rem; }
         <label class="form-label">E-mail</label>
         <div class="input-icon-wrap">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          <input type="email" class="form-input" id="login-email" placeholder="seu@email.com" value="admin@nurvex.com">
+          <input type="email" class="form-input" id="login-email" placeholder="seu@email.com">
         </div>
       </div>
       <div class="form-group">
@@ -1327,7 +1327,6 @@ h3 { font-size: 1.2rem; }
         Programado por <strong style="color:var(--text-secondary);">Gabriel Martello Farias</strong> &nbsp;·&nbsp; Edição 2026
       </p>
     </div>
-    <div class="auth-switch">Não tem conta? <a onclick="showRegister()">Criar conta</a></div>
   </div>
 
   <!-- REGISTER -->
@@ -2043,7 +2042,7 @@ function doLogin() {
 function resetAndLogin() {
   localStorage.clear();
   seedData();
-  document.getElementById("login-email").value = "admin@nurvex.com";
+  document.getElementById("login-email").value = "";
   document.getElementById("login-password").value = "Loading312@";
   toast("Dados resetados! Clique em Entrar.", "success");
 }
