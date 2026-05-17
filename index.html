@@ -1675,6 +1675,36 @@ h3 { font-size: 1.2rem; }
   </div>
 </div>
 
+<!-- MODULE MODAL -->
+<div id="modal-module" class="modal-overlay hidden">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title" id="module-modal-title">Novo Módulo</div>
+      <button class="modal-close" onclick="closeModal('modal-module')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <input type="hidden" id="module-disc-id">
+    <input type="hidden" id="module-edit-id">
+    <div class="form-group">
+      <label class="form-label">Emoji</label>
+      <input type="text" class="form-input" id="module-emoji-input" placeholder="📦" style="max-width:80px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nome do Módulo <span style="color:var(--accent);">*</span></label>
+      <input type="text" class="form-input" id="module-name" placeholder="Ex: Módulo 01 — Anatomia">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrição <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
+      <input type="text" class="form-input" id="module-desc" placeholder="Ex: Fundamentos de anatomia humana">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-module')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveModule()">Salvar Módulo</button>
+    </div>
+  </div>
+</div>
+
 <!-- USER MENU MODAL -->
 <div id="modal-user-menu" class="modal-overlay hidden">
   <div class="modal" style="max-width:360px;">
@@ -1923,6 +1953,7 @@ function seedData() {
 let currentUser = null;
 let currentView = 'dashboard';
 let currentDiscId = null;
+let currentModuleId = null;
 let editDiscId = null;
 let selectedEmoji = '📚';
 let selectedColor = '#7c6af7';
@@ -2096,7 +2127,7 @@ function renderDashboard() {
   const userId = currentUser.id;
   const discs = DB.get('disciplines', []).filter(d => d.userId === userId);
   const files = DB.get('files', []).filter(f => f.userId === userId);
-  const sems = DB.get('semesters', []).filter(s => s.userId === userId);
+  const sems = DB.get('semesters', []);
 
   const statsEl = document.getElementById('stats-grid');
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -2147,7 +2178,7 @@ function calcStorage(files) {
 // ============================================================
 function renderDisciplines() {
   const userId = currentUser.id;
-  const sems = DB.get('semesters', []).filter(s => s.userId === userId);
+  const sems = DB.get('semesters', []);
   const discs = DB.get('disciplines', []).filter(d => d.userId === userId);
   const files = DB.get('files', []).filter(f => f.userId === userId);
   const el = document.getElementById('disciplines-content');
@@ -2212,18 +2243,17 @@ function disciplineCardHTML(d, files) {
 // RENDER — FILES
 // ============================================================
 function renderFiles() {
-  const userId = currentUser.id;
-  const allFiles = DB.get('files', []).filter(f => f.userId === userId);
-  const discs = DB.get('disciplines', []).filter(d => d.userId === userId);
+  const allFiles = DB.get('files', []);
+  const discs = DB.get('disciplines', []);
+  const modules = DB.get('modules', []);
+  const isAdmin = currentUser.role !== 'student';
 
   let files, title, sub;
   if (currentDiscId) {
     const disc = discs.find(d => d.id === currentDiscId);
     files = allFiles.filter(f => f.discId === currentDiscId);
     title = disc ? `${disc.emoji} ${disc.name}` : 'Disciplina';
-    sub = disc ? (disc.professor || 'Arquivos da disciplina') : '';
-
-    // Breadcrumb
+    sub = disc ? (disc.professor || 'Materiais da disciplina') : '';
     document.getElementById('breadcrumb-area').innerHTML = `
       <div class="breadcrumb">
         <span class="breadcrumb-item" onclick="navigate('disciplines')">Disciplinas</span>
@@ -2240,29 +2270,174 @@ function renderFiles() {
   document.getElementById('files-view-title').textContent = title;
   document.getElementById('files-view-sub').textContent = sub;
 
-  // Drop zone — só aparece para admin e analyst
-  if (currentUser.role !== 'student') {
-    document.getElementById('files-drop-zone').innerHTML = `
-      <div class="drop-zone" id="drop-zone-el" onclick="triggerUpload()">
-        <div class="drop-zone-icon">☁️</div>
-        <div class="drop-zone-title">Arraste arquivos aqui ou clique para fazer upload</div>
-        <div class="drop-zone-sub">PDF, imagens, documentos, vídeos • Máx. 50MB por arquivo</div>
-        <div style="margin-top:12px;"><span class="badge badge-accent">Selecionar arquivos</span></div>
-      </div>
-      <div id="upload-progress-area" style="margin-top:12px;"></div>
-    `;
-    setupDropZone();
-  } else {
+  // Drop zone geral (sem módulo selecionado) — só admin
+  if (isAdmin && !currentModuleId) {
+    document.getElementById('files-drop-zone').innerHTML = '';
+  } else if (!isAdmin) {
     document.getElementById('files-drop-zone').innerHTML = '';
   }
 
   const el = document.getElementById('files-content');
-  if (files.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="padding-top:32px;"><div class="empty-icon">📂</div><div class="empty-title">Nenhum arquivo ainda</div><div class="empty-sub">Faça upload dos seus materiais acadêmicos</div></div>`;
-    return;
-  }
 
-  el.innerHTML = `<div style="margin-top:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><span style="font-size:13px;color:var(--text-secondary);">${files.length} arquivo${files.length!==1?'s':''}</span></div><div class="file-grid">${files.map(fileCardHTML).join('')}</div></div>`;
+  if (currentDiscId) {
+    // ---- VISUALIZAÇÃO POR MÓDULOS ----
+    const discModules = modules.filter(m => m.discId === currentDiscId)
+      .sort((a,b) => a.order - b.order);
+
+    let html = '';
+
+    // Botão novo módulo (admin)
+    if (isAdmin) {
+      html += `<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="openAddModule('${currentDiscId}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Módulo
+        </button>
+      </div>`;
+    }
+
+    // Arquivos sem módulo
+    const filesNoModule = files.filter(f => !f.moduleId);
+    if (filesNoModule.length > 0 || isAdmin) {
+      html += `<div class="module-section" style="margin-bottom:24px;">
+        <div class="module-header" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-subtle);">
+          <span style="font-size:18px;">📎</span>
+          <span style="font-weight:600;font-size:15px;color:var(--text-primary);">Arquivos Gerais</span>
+          ${isAdmin ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="currentModuleId=null;triggerUpload()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload
+          </button>` : ''}
+        </div>
+        ${filesNoModule.length === 0
+          ? `<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">Nenhum arquivo aqui ainda.</div>`
+          : `<div class="file-grid">${filesNoModule.map(fileCardHTML).join('')}</div>`
+        }
+      </div>`;
+    }
+
+    // Módulos
+    if (discModules.length === 0 && !isAdmin) {
+      html += `<div class="empty-state" style="padding-top:16px;"><div class="empty-icon">📦</div><div class="empty-title">Nenhum módulo criado ainda</div><div class="empty-sub">Aguarde o professor adicionar os módulos</div></div>`;
+    }
+
+    discModules.forEach((mod, idx) => {
+      const modFiles = files.filter(f => f.moduleId === mod.id);
+      const isOpen = mod.open !== false;
+      html += `<div class="module-section" style="margin-bottom:20px;border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;">
+        <div class="module-header" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--bg-card);cursor:pointer;" onclick="toggleModule('${mod.id}')">
+          <span style="font-size:20px;">${mod.emoji || '📦'}</span>
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${mod.name}</div>
+            ${mod.desc ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:1px;">${mod.desc}</div>` : ''}
+          </div>
+          <span style="font-size:12px;color:var(--text-muted);margin-right:8px;">${modFiles.length} arquivo${modFiles.length!==1?'s':''}</span>
+          ${isAdmin ? `
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();openEditModule('${mod.id}')" title="Editar módulo">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();confirmDelete('module','${mod.id}','Excluir módulo ${mod.name}?')" title="Excluir módulo">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>` : ''}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;transform:rotate(${isOpen?'180':'0'}deg);color:var(--text-muted);" id="chevron-${mod.id}"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="module-body-${mod.id}" style="padding:${isOpen?'14px 16px':'0 16px'};max-height:${isOpen?'2000px':'0'};overflow:hidden;transition:max-height 0.3s ease,padding 0.3s ease;">
+          ${isAdmin ? `<div style="margin-bottom:12px;">
+            <button class="btn btn-ghost btn-sm" onclick="currentModuleId='${mod.id}';triggerUpload()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Adicionar arquivo neste módulo
+            </button>
+          </div>` : ''}
+          ${modFiles.length === 0
+            ? `<div style="font-size:13px;color:var(--text-muted);padding:4px 0 10px;">Nenhum arquivo neste módulo ainda.</div>`
+            : `<div class="file-grid">${modFiles.map(fileCardHTML).join('')}</div>`
+          }
+        </div>
+      </div>`;
+    });
+
+    el.innerHTML = html || `<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-title">Nenhum conteúdo ainda</div></div>`;
+    document.getElementById('files-drop-zone').innerHTML = '<div id="upload-progress-area" style="margin-top:8px;"></div>';
+
+  } else {
+    // Visão todos os arquivos (sem disciplina selecionada)
+    if (isAdmin) {
+      document.getElementById('files-drop-zone').innerHTML = `
+        <div class="drop-zone" id="drop-zone-el" onclick="currentModuleId=null;triggerUpload()">
+          <div class="drop-zone-icon">☁️</div>
+          <div class="drop-zone-title">Arraste arquivos aqui ou clique para fazer upload</div>
+          <div class="drop-zone-sub">PDF, imagens, documentos, vídeos • Máx. 50MB</div>
+          <div style="margin-top:12px;"><span class="badge badge-accent">Selecionar arquivos</span></div>
+        </div>
+        <div id="upload-progress-area" style="margin-top:12px;"></div>`;
+      setupDropZone();
+    }
+    if (files.length === 0) {
+      el.innerHTML = `<div class="empty-state" style="padding-top:32px;"><div class="empty-icon">📂</div><div class="empty-title">Nenhum arquivo ainda</div><div class="empty-sub">Faça upload dos seus materiais acadêmicos</div></div>`;
+    } else {
+      el.innerHTML = `<div style="margin-top:20px;"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">${files.length} arquivo${files.length!==1?'s':''}</div><div class="file-grid">${files.map(fileCardHTML).join('')}</div></div>`;
+    }
+  }
+}
+
+function toggleModule(id) {
+  const modules = DB.get('modules', []);
+  const idx = modules.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  modules[idx].open = modules[idx].open === false ? true : false;
+  DB.set('modules', modules);
+  // Update UI without full re-render
+  const body = document.getElementById('module-body-'+id);
+  const chevron = document.getElementById('chevron-'+id);
+  const isOpen = modules[idx].open !== false;
+  if (body) { body.style.maxHeight = isOpen ? '2000px' : '0'; body.style.padding = isOpen ? '14px 16px' : '0 16px'; }
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+// MODULE CRUD
+function openAddModule(discId) {
+  if (currentUser.role === 'student') { toast('Sem permissão', 'error'); return; }
+  document.getElementById('module-modal-title').textContent = 'Novo Módulo';
+  document.getElementById('module-disc-id').value = discId;
+  document.getElementById('module-edit-id').value = '';
+  document.getElementById('module-name').value = '';
+  document.getElementById('module-desc').value = '';
+  document.getElementById('module-emoji-input').value = '📦';
+  openModal('modal-module');
+}
+
+function openEditModule(id) {
+  if (currentUser.role === 'student') { toast('Sem permissão', 'error'); return; }
+  const mod = DB.get('modules', []).find(m => m.id === id);
+  if (!mod) return;
+  document.getElementById('module-modal-title').textContent = 'Editar Módulo';
+  document.getElementById('module-disc-id').value = mod.discId;
+  document.getElementById('module-edit-id').value = id;
+  document.getElementById('module-name').value = mod.name;
+  document.getElementById('module-desc').value = mod.desc || '';
+  document.getElementById('module-emoji-input').value = mod.emoji || '📦';
+  openModal('modal-module');
+}
+
+function saveModule() {
+  const name = document.getElementById('module-name').value.trim();
+  if (!name) { toast('Nome do módulo é obrigatório', 'error'); return; }
+  const discId = document.getElementById('module-disc-id').value;
+  const editId = document.getElementById('module-edit-id').value;
+  const desc = document.getElementById('module-desc').value.trim();
+  const emoji = document.getElementById('module-emoji-input').value.trim() || '📦';
+  const modules = DB.get('modules', []);
+  if (editId) {
+    const idx = modules.findIndex(m => m.id === editId);
+    if (idx !== -1) modules[idx] = { ...modules[idx], name, desc, emoji };
+    toast('Módulo atualizado!', 'success');
+  } else {
+    const order = modules.filter(m => m.discId === discId).length + 1;
+    modules.push({ id: 'm'+Date.now(), discId, name, desc, emoji, order, open: true, createdBy: currentUser.id });
+    toast(`Módulo "${name}" criado! 🎉`, 'success');
+  }
+  DB.set('modules', modules);
+  closeModal('modal-module');
+  renderFiles();
 }
 
 function fileCardHTML(f) {
@@ -2306,7 +2481,7 @@ function triggerUpload() {
 function handleFileUpload(fileList) {
   if (!currentDiscId) {
     // Pick a discipline
-    const discs = DB.get('disciplines', []).filter(d => d.userId === currentUser.id);
+    const discs = DB.get('disciplines', []);
     if (discs.length === 0) { toast('Crie uma disciplina primeiro!', 'error'); return; }
     // Use first discipline or ask
     toast('Dica: abra uma disciplina para fazer upload direto nela', 'info');
@@ -2426,8 +2601,8 @@ function doSearch() {
   const query = (document.getElementById('search-input')?.value || document.getElementById('topbar-search')?.value || '').toLowerCase().trim();
   const type = document.getElementById('search-type')?.value || 'all';
   const userId = currentUser.id;
-  const discs = DB.get('disciplines', []).filter(d => d.userId === userId);
-  const files = DB.get('files', []).filter(f => f.userId === userId);
+  const discs = DB.get('disciplines', []);
+  const files = DB.get('files', []);
 
   const el = document.getElementById('search-results');
   if (!el) return;
@@ -2501,7 +2676,7 @@ function saveSemester() {
   const name = document.getElementById('semester-name').value.trim();
   if (!name) { toast('Digite um nome para o semestre', 'error'); return; }
   const sems = DB.get('semesters', []);
-  sems.push({ id: 's'+Date.now(), name, userId: currentUser.id });
+  sems.push({ id: 's'+Date.now(), name });
   DB.set('semesters', sems);
   closeModal('modal-semester');
   renderSidebarSemesters();
@@ -2511,7 +2686,7 @@ function saveSemester() {
 
 function renderSidebarSemesters() {
   const userId = currentUser.id;
-  const sems = DB.get('semesters', []).filter(s => s.userId === userId);
+  const sems = DB.get('semesters', []);
   const el = document.getElementById('sidebar-semesters');
   el.innerHTML = sems.map(s => `
     <button class="sidebar-nav-item" onclick="navigate('disciplines')">
@@ -2585,7 +2760,7 @@ function openEditDisc(id) {
 }
 
 function populateSemesterSelect(selected) {
-  const sems = DB.get('semesters', []).filter(s => s.userId === currentUser.id);
+  const sems = DB.get('semesters', []);
   const el = document.getElementById('disc-semester');
   if (sems.length === 0) {
     el.innerHTML = '<option value="">Crie um semestre primeiro</option>';
@@ -2609,7 +2784,7 @@ function saveDiscipline() {
     }
     toast('Disciplina atualizada!', 'success');
   } else {
-    discs.push({ id: 'd'+Date.now(), name, semId, professor: document.getElementById('disc-professor').value.trim(), desc: document.getElementById('disc-desc').value.trim(), tags, emoji, color: selectedColor, userId: currentUser.id });
+    discs.push({ id: 'd'+Date.now(), name, semId, professor: document.getElementById('disc-professor').value.trim(), desc: document.getElementById('disc-desc').value.trim(), tags, emoji, color: selectedColor, createdBy: currentUser.id });
     toast('Disciplina criada! 🎉', 'success');
   }
   DB.set('disciplines', discs);
@@ -2662,6 +2837,16 @@ function doDelete(type, id) {
     renderSidebarSemesters();
     toast('Semestre excluído', 'info');
     renderDisciplines();
+  } else if (type === 'module') {
+    let modules = DB.get('modules', []);
+    modules = modules.filter(m => m.id !== id);
+    DB.set('modules', modules);
+    // Remove moduleId from files in this module
+    let files = DB.get('files', []);
+    files = files.map(f => f.moduleId === id ? {...f, moduleId: null} : f);
+    DB.set('files', files);
+    toast('Módulo excluído', 'info');
+    renderFiles();
   } else if (type === 'user') {
     let users = DB.get('users', []);
     users = users.filter(u => u.id !== id);
