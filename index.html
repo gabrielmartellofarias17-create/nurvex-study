@@ -1330,62 +1330,6 @@ h3 { font-size: 1.2rem; }
   </div>
 
   <!-- REGISTER -->
-  <div id="register-panel" class="auth-card hidden">
-    <h2 class="auth-title">Criar conta 🎓</h2>
-    <p class="auth-subtitle">Preencha os dados para se cadastrar</p>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="form-group">
-        <label class="form-label">Nome completo</label>
-        <input type="text" class="form-input" id="reg-name" placeholder="Seu nome completo">
-      </div>
-      <div class="form-group">
-        <label class="form-label">E-mail</label>
-        <input type="email" class="form-input" id="reg-email" placeholder="seu@email.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Função</label>
-        <select class="form-input" id="reg-course" style="cursor:pointer;">
-          <option value="">Selecione sua função...</option>
-          <option value="Acadêmico de Enfermagem">Acadêmico de Enfermagem</option>
-          <option value="Analista e Dev. de Sistemas">Analista e Dev. de Sistemas</option>
-          <option value="Administrador do Sistema">Administrador do Sistema</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Perfil de acesso</label>
-        <div style="display:flex;gap:8px;margin-top:2px;">
-          <label id="role-btn-student" onclick="selectRole('student')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border:2px solid var(--accent);border-radius:var(--radius-md);cursor:pointer;background:var(--accent-soft);transition:all 0.2s;">
-            <span style="font-size:22px;">🎓</span>
-            <span style="font-size:12px;font-weight:600;color:var(--accent);">Estudante</span>
-          </label>
-          <label id="role-btn-analyst" onclick="selectRole('analyst')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border:2px solid var(--border);border-radius:var(--radius-md);cursor:pointer;background:transparent;transition:all 0.2s;">
-            <span style="font-size:22px;">💻</span>
-            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">Analista</span>
-          </label>
-          <label id="role-btn-admin" onclick="selectRole('admin')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border:2px solid var(--border);border-radius:var(--radius-md);cursor:pointer;background:transparent;transition:all 0.2s;">
-            <span style="font-size:22px;">🛡️</span>
-            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">Admin</span>
-          </label>
-        </div>
-        <input type="hidden" id="reg-role" value="student">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Senha</label>
-        <div style="position:relative;">
-          <input type="password" class="form-input" id="reg-pass" placeholder="Mínimo 6 caracteres" style="padding-right:44px;">
-          <button onclick="togglePassword('reg-pass', this)" style="position:absolute;right:0;top:0;height:100%;width:42px;background:none;border:none;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-      </div>
-      <button class="btn btn-primary btn-lg w-full" onclick="doRegister()" style="margin-top:4px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-        Criar conta
-      </button>
-    </div>
-    <div class="auth-switch">Já tem conta? <a onclick="showLogin()">Entrar</a></div>
-  </div>
-
   <!-- FORGOT PASSWORD -->
   <div id="forgot-panel" class="auth-card hidden">
     <h2 class="auth-title">Recuperar senha</h2>
@@ -2090,9 +2034,9 @@ function selectRole(role) {
 function doRegister() {
   const name   = document.getElementById('reg-name').value.trim();
   const email  = document.getElementById('reg-email').value.trim();
-  const course = document.getElementById('reg-course').value.trim();
+  const course = document.getElementById('reg-course').value;
   const pass   = document.getElementById('reg-pass').value;
-  const role   = document.getElementById('reg-role').value;
+  const role   = 'student'; // Sempre Estudante — papel só pode ser alterado pelo Admin
   if (!name || !email || !pass) { toast('Preencha nome, e-mail e senha', 'error'); return; }
   if (pass.length < 6) { toast('Senha deve ter pelo menos 6 caracteres', 'error'); return; }
   const users = DB.get('users', []);
