@@ -1705,6 +1705,52 @@ h3 { font-size: 1.2rem; }
   </div>
 </div>
 
+<!-- LINK EXTERNO (vídeo/drive) -->
+<div id="modal-link" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">📎 Adicionar Link Externo</div>
+      <button class="modal-close" onclick="closeModal('modal-link')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="background:var(--accent-soft);border:1px solid rgba(124,106,247,0.2);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--text-secondary);line-height:1.6;">
+      💡 Use para vídeos grandes do <strong style="color:var(--text-primary);">Google Drive</strong>, aulas do <strong style="color:var(--text-primary);">YouTube</strong>, ou qualquer link externo. O arquivo fica salvo e acessível direto aqui.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-group">
+        <label class="form-label">Nome do arquivo <span style="color:var(--accent);">*</span></label>
+        <input type="text" class="form-input" id="link-name" placeholder="Ex: Aula 01 — Introdução.mp4">
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL / Link <span style="color:var(--accent);">*</span></label>
+        <input type="url" class="form-input" id="link-url" placeholder="https://drive.google.com/... ou https://youtu.be/...">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Cole o link de compartilhamento do Google Drive ou YouTube</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" id="link-type">
+          <option value="video">🎬 Vídeo (MP4, YouTube, Drive)</option>
+          <option value="pdf">📄 PDF</option>
+          <option value="doc">📝 Documento</option>
+          <option value="ppt">📊 Apresentação</option>
+          <option value="default">📁 Outro</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);font-size:12px;color:var(--text-muted);">
+      <strong style="color:var(--text-secondary);display:block;margin-bottom:6px;">Como pegar o link do Google Drive:</strong>
+      1. Clique com botão direito no arquivo → <em>Compartilhar</em><br>
+      2. Mude para "Qualquer pessoa com o link pode ver"<br>
+      3. Copie o link e cole aqui
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-link')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveLinkExterno()">Salvar Link</button>
+    </div>
+  </div>
+</div>
+
 <!-- USER MENU MODAL -->
 <div id="modal-user-menu" class="modal-overlay hidden">
   <div class="modal" style="max-width:360px;">
@@ -2353,10 +2399,16 @@ async function renderFiles() {
         <div class="module-header" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-subtle);">
           <span style="font-size:18px;">📎</span>
           <span style="font-weight:600;font-size:15px;color:var(--text-primary);">Arquivos Gerais</span>
-          ${isAdmin ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="currentModuleId=null;triggerUpload()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Upload
-          </button>` : ''}
+          ${isAdmin ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+            <button class="btn btn-ghost btn-sm" onclick="currentModuleId=null;triggerUpload()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload
+            </button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--accent);" onclick="openLinkModal(null)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Link externo
+            </button>
+          </div>` : ''}
         </div>
         ${filesNoModule.length === 0
           ? `<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">Nenhum arquivo aqui ainda.</div>`
@@ -2391,10 +2443,14 @@ async function renderFiles() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;transform:rotate(${isOpen?'180':'0'}deg);color:var(--text-muted);" id="chevron-${mod.id}"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="module-body-${mod.id}" style="padding:${isOpen?'14px 16px':'0 16px'};max-height:${isOpen?'2000px':'0'};overflow:hidden;transition:max-height 0.3s ease,padding 0.3s ease;">
-          ${isAdmin ? `<div style="margin-bottom:12px;">
+          ${isAdmin ? `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-ghost btn-sm" onclick="currentModuleId='${mod.id}';triggerUpload()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Adicionar arquivo neste módulo
+              Upload arquivo
+            </button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--accent);" onclick="openLinkModal('${mod.id}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Link externo (Drive/YouTube)
             </button>
           </div>` : ''}
           ${modFiles.length === 0
@@ -2596,6 +2652,30 @@ async function openFile(id) {
   const files = await sbGet('files', { id });
   const f = files[0];
   if (!f) return;
+
+  // ── LINK EXTERNO (YouTube / Drive / URL) ──
+  if (f.external_url) {
+    const { embed, kind } = buildEmbedUrl(f.external_url);
+    if (kind === 'youtube' || kind === 'drive') {
+      // Usa o player de vídeo com iframe embed
+      document.getElementById('video-filename').textContent = f.name;
+      document.getElementById('video-download-btn').href = f.external_url;
+      document.getElementById('video-download-btn').download = '';
+      document.getElementById('video-download-btn').target = '_blank';
+      const player = document.getElementById('video-player');
+      // Substitui o <video> por um <iframe> para YouTube/Drive
+      player.outerHTML; // just reference
+      const container = player.parentElement;
+      container.innerHTML = `<iframe src="${embed}" frameborder="0" allow="autoplay;encrypted-media;fullscreen" allowfullscreen style="width:100%;height:calc(95vh - 56px);border:none;display:block;"></iframe>`;
+      openModal('modal-video');
+      return;
+    }
+    // Outros links: abre em nova aba
+    window.open(f.external_url, '_blank');
+    return;
+  }
+
+  // ── ARQUIVO NO STORAGE ──
   let url = '';
   if (f.storage_path) {
     const { data } = supa.storage.from('arquivos').getPublicUrl(f.storage_path);
@@ -2613,16 +2693,14 @@ async function openFile(id) {
   }
 
   if (f.type === 'video') {
-    const player = document.getElementById('video-player');
+    const container = document.getElementById('video-player').parentElement;
     document.getElementById('video-filename').textContent = f.name;
     document.getElementById('video-download-btn').href = url;
     document.getElementById('video-download-btn').download = f.name;
-    // Define o source com tipo correto para melhor compatibilidade
+    document.getElementById('video-download-btn').target = '';
     const ext = f.name.split('.').pop().toLowerCase();
     const mimeMap = { mp4:'video/mp4', webm:'video/webm', mov:'video/quicktime', avi:'video/x-msvideo', mkv:'video/x-matroska', m4v:'video/mp4', ogv:'video/ogg', '3gp':'video/3gpp' };
-    player.src = '';
-    player.innerHTML = `<source src="${url}" type="${mimeMap[ext] || 'video/mp4'}">Seu navegador não suporta este formato de vídeo.`;
-    player.load();
+    container.innerHTML = `<video controls style="width:100%;max-height:calc(95vh - 56px);outline:none;display:block;" preload="metadata" id="video-player"><source src="${url}" type="${mimeMap[ext]||'video/mp4'}">Seu navegador não suporta este formato.</video>`;
     openModal('modal-video');
     return;
   }
@@ -2632,15 +2710,78 @@ async function openFile(id) {
     return;
   }
 
-  // Todos os outros tipos: download direto
   const a = document.createElement('a');
   a.href = url; a.target = '_blank'; a.download = f.name; a.click();
 }
 
 function closeVideoModal() {
-  const player = document.getElementById('video-player');
-  if (player) { player.pause(); player.src = ''; player.innerHTML = ''; }
+  // Para vídeo se existir, e reseta o container de volta para <video>
+  const container = document.querySelector('#modal-video .modal > div:last-child');
+  if (container) {
+    const existing = container.querySelector('video');
+    if (existing) { existing.pause(); existing.src = ''; }
+    const iframe = container.querySelector('iframe');
+    if (iframe) iframe.src = 'about:blank';
+    // Restaura sempre para <video> limpo
+    container.innerHTML = `<video controls style="width:100%;max-height:calc(95vh - 56px);outline:none;display:block;" preload="metadata" id="video-player">Seu navegador não suporta vídeo HTML5.</video>`;
+  }
   closeModal('modal-video');
+}
+
+// ============================================================
+// LINK EXTERNO (Google Drive / YouTube / outros)
+// ============================================================
+function openLinkModal(moduleId) {
+  currentModuleId = moduleId;
+  document.getElementById('link-name').value = '';
+  document.getElementById('link-url').value = '';
+  document.getElementById('link-type').value = 'video';
+  openModal('modal-link');
+}
+
+async function saveLinkExterno() {
+  const name = document.getElementById('link-name').value.trim();
+  const url  = document.getElementById('link-url').value.trim();
+  const type = document.getElementById('link-type').value;
+  if (!name) { toast('Digite um nome para o arquivo', 'error'); return; }
+  if (!url)  { toast('Cole o link externo', 'error'); return; }
+  if (!currentDiscId) { toast('Nenhuma disciplina selecionada', 'error'); return; }
+
+  const fileId = 'f' + Date.now() + Math.random().toString(36).slice(2);
+  const record = await sbInsert('files', {
+    id: fileId,
+    name,
+    type,
+    size: 'Link externo',
+    disc_id: currentDiscId,
+    module_id: currentModuleId || null,
+    storage_path: null,
+    external_url: url,
+    uploaded_by: currentUser.id
+  });
+  if (record) {
+    toast('"' + name + '" adicionado com sucesso! 🎉', 'success');
+    closeModal('modal-link');
+    await renderFiles();
+  }
+}
+
+function getYouTubeId(url) {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function getDriveId(url) {
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+function buildEmbedUrl(url) {
+  const ytId = getYouTubeId(url);
+  if (ytId) return { embed: `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`, kind: 'youtube' };
+  const driveId = getDriveId(url);
+  if (driveId) return { embed: `https://drive.google.com/file/d/${driveId}/preview`, kind: 'drive' };
+  return { embed: url, kind: 'other' };
 }
 
 async function downloadFile(id) {
