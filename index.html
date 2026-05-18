@@ -2573,32 +2573,37 @@ async function openFile(id) {
   const files = await sbGet('files', { id });
   const f = files[0];
   if (!f) return;
-  if (f.type === 'pdf' && f.url) {
+  let url = '';
+  if (f.storage_path) {
+    const { data } = supa.storage.from('arquivos').getPublicUrl(f.storage_path);
+    url = data?.publicUrl || '';
+  }
+  if (!url) { toast('Arquivo sem conteúdo. Faça upload novamente!', 'info'); return; }
+  if (f.type === 'pdf') {
     document.getElementById('pdf-filename').textContent = f.name;
-    document.getElementById('pdf-frame').src = f.url;
-    document.getElementById('pdf-download-btn').href = f.url;
+    document.getElementById('pdf-frame').src = url;
+    document.getElementById('pdf-download-btn').href = url;
     document.getElementById('pdf-download-btn').download = f.name;
     openModal('modal-pdf');
     return;
   }
-  if (f.type === 'image' && f.url) {
-    window.open(f.url, '_blank');
+  if (f.type === 'image') {
+    window.open(url, '_blank');
     return;
   }
-  if (f.url) {
-    const a = document.createElement('a');
-    a.href = f.url; a.download = f.name; a.click();
-  } else {
-    toast('Arquivo demo — sem conteúdo real. Faça upload de um arquivo real!', 'info');
-  }
+  const a = document.createElement('a');
+  a.href = url; a.download = f.name; a.click();
 }
 
 async function downloadFile(id) {
   const files = await sbGet('files', { id });
   const f = files[0];
-  if (!f || !f.url) { toast('Arquivo demo — sem conteúdo real', 'info'); return; }
+  if (!f || !f.storage_path) { toast('Arquivo sem conteúdo. Faça upload novamente!', 'info'); return; }
+  const { data } = supa.storage.from('arquivos').getPublicUrl(f.storage_path);
+  const url = data?.publicUrl || '';
+  if (!url) { toast('Erro ao gerar link', 'error'); return; }
   const a = document.createElement('a');
-  a.href = f.url; a.download = f.name; a.click();
+  a.href = url; a.download = f.name; a.click();
 }
 
 // ============================================================
