@@ -2271,16 +2271,16 @@ function disciplineCardHTML(d, files) {
 // ============================================================
 // RENDER — FILES
 // ============================================================
-function renderFiles() {
-  const allFiles = DB.get('files', []);
-  const discs = DB.get('disciplines', []);
-  const modules = DB.get('modules', []);
+async function renderFiles() {
+  const [allFiles, discs, modules] = await Promise.all([
+    sbGet('files'), sbGet('disciplines'), sbGet('modules')
+  ]);
   const isAdmin = currentUser.role !== 'student';
 
   let files, title, sub;
   if (currentDiscId) {
     const disc = discs.find(d => d.id === currentDiscId);
-    files = allFiles.filter(f => f.discId === currentDiscId);
+    files = allFiles.filter(f => f.disc_id === currentDiscId);
     title = disc ? `${disc.emoji} ${disc.name}` : 'Disciplina';
     sub = disc ? (disc.professor || 'Materiais da disciplina') : '';
     document.getElementById('breadcrumb-area').innerHTML = `
@@ -2433,7 +2433,7 @@ function openAddModule(discId) {
   openModal('modal-module');
 }
 
-function openEditModule(id) {
+async function openEditModule(id) {
   if (currentUser.role === 'student') { toast('Sem permissão', 'error'); return; }
   const mod = DB.get('modules', []).find(m => m.id === id);
   if (!mod) return;
@@ -2446,24 +2446,22 @@ function openEditModule(id) {
   openModal('modal-module');
 }
 
-function saveModule() {
+async function saveModule() {
   const name = document.getElementById('module-name').value.trim();
   if (!name) { toast('Nome do módulo é obrigatório', 'error'); return; }
   const discId = document.getElementById('module-disc-id').value;
   const editId = document.getElementById('module-edit-id').value;
   const desc = document.getElementById('module-desc').value.trim();
   const emoji = document.getElementById('module-emoji-input').value.trim() || '📦';
-  const modules = DB.get('modules', []);
   if (editId) {
-    const idx = modules.findIndex(m => m.id === editId);
-    if (idx !== -1) modules[idx] = { ...modules[idx], name, desc, emoji };
+    await sbUpdate('modules', editId, { name, description: desc, emoji });
     toast('Módulo atualizado!', 'success');
   } else {
-    const order = modules.filter(m => m.discId === discId).length + 1;
-    modules.push({ id: 'm'+Date.now(), discId, name, desc, emoji, order, open: true, createdBy: currentUser.id });
-    toast(`Módulo "${name}" criado! 🎉`, 'success');
+    const existing = await sbGet('modules');
+    const order = existing.filter(m => m.disc_id === discId).length + 1;
+    await sbInsert('modules', { id:'m'+Date.now(), disc_id: discId, name, description: desc, emoji, ord: order, open: true, created_by: currentUser.id });
+    toast('Módulo "' + name + '" criado! 🎉', 'success');
   }
-  DB.set('modules', modules);
   closeModal('modal-module');
   renderFiles();
 }
@@ -2474,7 +2472,7 @@ function fileCardHTML(f) {
   return `<div class="file-card" onclick="openFile('${f.id}')">
     <div class="file-icon-wrap" style="background:${bg};">${icon}</div>
     <div class="file-name">${f.name}</div>
-    <div class="file-meta">${f.size} · ${formatDate(f.date)}</div>
+    <div class="file-meta">${f.size} · ${formatDate(f.created_at || f.date)}</div>
     <div class="file-actions">
       <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();downloadFile('${f.id}')" data-tip="Download">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -2809,35 +2807,33 @@ function confirmDelete(type, id, msg) {
   openModal('modal-confirm');
 }
 
-function doDelete(type, id) {
+async function doDelete(type, id) {
   if (type === 'discipline') {
     let discs = DB.get('disciplines', []);
     discs = discs.filter(d => d.id !== id);
     DB.set('disciplines', discs);
     // Also delete files
     let files = DB.get('files', []);
-    files = files.filter(f => f.discId !== id);
+    files = files.filter(f => f.disc_id !== id);
     DB.set('files', files);
     toast('Disciplina excluída', 'info');
     if (currentView === 'disciplines') renderDisciplines();
     if (currentView === 'dashboard') renderDashboard();
   } else if (type === 'file') {
-    let files = DB.get('files', []);
-    files = files.filter(f => f.id !== id);
-    DB.set('files', files);
+    const rows = await sbGet('files', { id });
+    if (rows[0]?.storage_path) await supa.storage.from('arquivos').remove([rows[0].storage_path]);
+    await sbDelete('files', id);
     toast('Arquivo excluído', 'info');
     renderFiles();
   } else if (type === 'semester') {
-    let sems = DB.get('semesters', []);
-    sems = sems.filter(s => s.id !== id);
-    DB.set('semesters', sems);
+    await sbDelete('semesters', id);
     // Also delete disciplines and files
     let discs = DB.get('disciplines', []);
     const discIds = discs.filter(d => d.semId === id).map(d => d.id);
     discs = discs.filter(d => d.semId !== id);
     DB.set('disciplines', discs);
     let files = DB.get('files', []);
-    files = files.filter(f => !discIds.includes(f.discId));
+    files = files.filter(f => !discIds.includes(f.disc_id));
     DB.set('files', files);
     renderSidebarSemesters();
     toast('Semestre excluído', 'info');
@@ -2853,9 +2849,7 @@ function doDelete(type, id) {
     toast('Módulo excluído', 'info');
     renderFiles();
   } else if (type === 'user') {
-    let users = DB.get('users', []);
-    users = users.filter(u => u.id !== id);
-    DB.set('users', users);
+    await sbDelete('users', id);
     toast('Usuário removido', 'info');
     renderUsersTable();
   }
