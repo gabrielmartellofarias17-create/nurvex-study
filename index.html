@@ -2813,14 +2813,16 @@ function confirmDelete(type, id, msg) {
 }
 
 async function doDelete(type, id) {
+  closeModal('modal-confirm');
   if (type === 'discipline') {
-    let discs = DB.get('disciplines', []);
-    discs = discs.filter(d => d.id !== id);
-    DB.set('disciplines', discs);
-    // Also delete files
-    let files = DB.get('files', []);
-    files = files.filter(f => f.disc_id !== id);
-    DB.set('files', files);
+    const files = await sbGet('files');
+    const discFiles = files.filter(f => f.disc_id === id);
+    for (const f of discFiles) {
+      if (f.storage_path) await supa.storage.from('arquivos').remove([f.storage_path]);
+    }
+    await sbDeleteWhere('files', 'disc_id', id);
+    await sbDeleteWhere('modules', 'disc_id', id);
+    await sbDelete('disciplines', id);
     toast('Disciplina excluída', 'info');
     if (currentView === 'disciplines') renderDisciplines();
     if (currentView === 'dashboard') renderDashboard();
@@ -2831,26 +2833,20 @@ async function doDelete(type, id) {
     toast('Arquivo excluído', 'info');
     renderFiles();
   } else if (type === 'semester') {
+    const discs = await sbGet('disciplines');
+    const discIds = discs.filter(d => d.sem_id === id).map(d => d.id);
+    for (const dId of discIds) {
+      await sbDeleteWhere('files', 'disc_id', dId);
+      await sbDeleteWhere('modules', 'disc_id', dId);
+      await sbDelete('disciplines', dId);
+    }
     await sbDelete('semesters', id);
-    // Also delete disciplines and files
-    let discs = DB.get('disciplines', []);
-    const discIds = discs.filter(d => d.semId === id).map(d => d.id);
-    discs = discs.filter(d => d.semId !== id);
-    DB.set('disciplines', discs);
-    let files = DB.get('files', []);
-    files = files.filter(f => !discIds.includes(f.disc_id));
-    DB.set('files', files);
     renderSidebarSemesters();
     toast('Semestre excluído', 'info');
     renderDisciplines();
   } else if (type === 'module') {
-    let modules = DB.get('modules', []);
-    modules = modules.filter(m => m.id !== id);
-    DB.set('modules', modules);
-    // Remove moduleId from files in this module
-    let files = DB.get('files', []);
-    files = files.map(f => f.moduleId === id ? {...f, moduleId: null} : f);
-    DB.set('files', files);
+    await supa.from('files').update({ module_id: null }).eq('module_id', id);
+    await sbDelete('modules', id);
     toast('Módulo excluído', 'info');
     renderFiles();
   } else if (type === 'user') {
