@@ -2463,7 +2463,7 @@ async function saveModule() {
     toast('Módulo "' + name + '" criado! 🎉', 'success');
   }
   closeModal('modal-module');
-  renderFiles();
+  await renderFiles();
 }
 
 function fileCardHTML(f) {
@@ -2688,8 +2688,8 @@ async function saveSemester() {
   const result = await sbInsert('semesters', { id:'s'+Date.now(), name, created_by: currentUser.id });
   if (!result) return;
   closeModal('modal-semester');
-  renderSidebarSemesters();
-  if (currentView === 'disciplines') renderDisciplines();
+  await renderSidebarSemesters();
+  if (currentView === 'disciplines') await renderDisciplines();
   toast('Semestre criado!', 'success');
 }
 
@@ -2797,8 +2797,8 @@ async function saveDiscipline() {
     toast('Disciplina criada! 🎉', 'success');
   }
   closeModal('modal-discipline');
-  if (currentView === 'disciplines') renderDisciplines();
-  if (currentView === 'dashboard') renderDashboard();
+  if (currentView === 'disciplines') await renderDisciplines();
+  if (currentView === 'dashboard') await renderDashboard();
 }
 
 // ============================================================
@@ -2824,14 +2824,14 @@ async function doDelete(type, id) {
     await sbDeleteWhere('modules', 'disc_id', id);
     await sbDelete('disciplines', id);
     toast('Disciplina excluída', 'info');
-    if (currentView === 'disciplines') renderDisciplines();
-    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'disciplines') await renderDisciplines();
+    if (currentView === 'dashboard') await renderDashboard();
   } else if (type === 'file') {
     const rows = await sbGet('files', { id });
     if (rows[0]?.storage_path) await supa.storage.from('arquivos').remove([rows[0].storage_path]);
     await sbDelete('files', id);
     toast('Arquivo excluído', 'info');
-    renderFiles();
+    await renderFiles();
   } else if (type === 'semester') {
     const discs = await sbGet('disciplines');
     const discIds = discs.filter(d => d.sem_id === id).map(d => d.id);
@@ -2841,14 +2841,14 @@ async function doDelete(type, id) {
       await sbDelete('disciplines', dId);
     }
     await sbDelete('semesters', id);
-    renderSidebarSemesters();
+    await renderSidebarSemesters();
     toast('Semestre excluído', 'info');
-    renderDisciplines();
+    await renderDisciplines();
   } else if (type === 'module') {
     await supa.from('files').update({ module_id: null }).eq('module_id', id);
     await sbDelete('modules', id);
     toast('Módulo excluído', 'info');
-    renderFiles();
+    await renderFiles();
   } else if (type === 'user') {
     await sbDelete('users', id);
     toast('Usuário removido', 'info');
