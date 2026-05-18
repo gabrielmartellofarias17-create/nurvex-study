@@ -2513,7 +2513,8 @@ async function handleFileUpload(fileList) {
   for (const file of files) {
     const fileId = 'f' + Date.now() + Math.random().toString(36).slice(2);
     const type = getFileType(file.name);
-    const storagePath = (currentDiscId || 'geral') + '/' + fileId + '_' + file.name;
+    const safeName = file.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = (currentDiscId || 'geral') + '/' + fileId + '_' + safeName;
     area.innerHTML = `<div style="padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);display:flex;flex-direction:column;gap:8px;">
       <div style="display:flex;justify-content:space-between;font-size:13px;"><span>${file.name}</span><span id="prog-pct-${fileId}">Enviando...</span></div>
       <div class="progress-bar-wrap"><div class="progress-bar" id="prog-bar-${fileId}" style="width:60%;animation:pulse 1s infinite;"></div></div>
