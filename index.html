@@ -641,6 +641,8 @@ h3 { font-size: 1.2rem; }
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 .avatar-upload-wrap {
   position: relative;
@@ -3749,18 +3751,30 @@ function renderAvatar(el, user) {
 function handleAvatarUpload(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { toast('Imagem muito grande! Máx. 2MB', 'error'); return; }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result;
+  if (file.size > 5 * 1024 * 1024) { toast('Imagem muito grande! Máx. 5MB', 'error'); return; }
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = async () => {
+    // Resize to 400x400 maintaining quality
+    const size = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    // Crop to square from center
+    const min = Math.min(img.width, img.height);
+    const sx = (img.width - min) / 2;
+    const sy = (img.height - min) / 2;
+    ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+    URL.revokeObjectURL(objectUrl);
+    const base64 = canvas.toDataURL('image/jpeg', 0.92);
     DB.set(getAvatarKey(currentUser.id), base64);
-    // Atualiza avatar no modal
+    currentUser.avatar = base64;
+    await sbUpdate('users', currentUser.id, { avatar: base64 });
     renderAvatar(document.getElementById('menu-avatar'), currentUser);
-    // Atualiza avatar na sidebar
     renderAvatar(document.getElementById('sidebar-avatar'), currentUser);
-    toast('Foto de perfil atualizada!', 'success');
+    toast('Foto de perfil atualizada! ✨', 'success');
   };
-  reader.readAsDataURL(file);
+  img.src = objectUrl;
   input.value = '';
 }
 
