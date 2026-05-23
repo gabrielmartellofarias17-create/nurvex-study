@@ -2087,7 +2087,9 @@ function loginUser(user) {
   document.getElementById('sidebar-name').textContent = user.name;
   document.getElementById('sidebar-email').textContent = user.email;
   renderAvatar(document.getElementById('sidebar-avatar'), user);
-  document.getElementById('welcome-title').textContent = `Olá, ${user.name.split(' ')[0]}! 👋`;
+  document.getElementById('welcome-title').textContent = user.role === 'admin'
+    ? `Painel Administrativo 🛡️`
+    : `Olá, ${user.name.split(' ')[0]}! 👋`;
 
   // Admin nav
   if (user.role === 'admin') {
@@ -2228,6 +2230,108 @@ function navigate(view, discId) {
 // RENDER — DASHBOARD
 // ============================================================
 async function renderDashboard() {
+  if (currentUser.role === 'admin') {
+    await renderAdminDashboard();
+  } else {
+    await renderStudentDashboard();
+  }
+}
+
+async function renderAdminDashboard() {
+  const [users, discs, files, sems, provas, avisos] = await Promise.all([
+    sbGet('users'), sbGet('disciplines'), sbGet('files'), sbGet('semesters'), sbGet('provas'), sbGet('avisos')
+  ]);
+
+  document.getElementById('welcome-title').textContent = `Painel Administrativo 🛡️`;
+  document.getElementById('stats-grid').innerHTML = `
+    ${statCard('👥', users.length, 'Usuários cadastrados', '#7c6af7')}
+    ${statCard('📚', discs.length, 'Disciplinas criadas', '#e879a0')}
+    ${statCard('📁', files.length, 'Arquivos salvos', '#4ade80')}
+    ${statCard('📅', sems.length, 'Semestres ativos', '#fbbf24')}
+    ${statCard('📢', avisos.length, 'Avisos publicados', '#60a5fa')}
+  `;
+
+  // Últimos usuários cadastrados
+  const recentUsers = [...users].reverse().slice(0, 5);
+  // Últimos arquivos enviados
+  const recentFiles = [...files].reverse().slice(0, 5);
+  // Atividade por usuário
+  const userActivity = users.map(u => ({
+    ...u,
+    discCount: discs.filter(d => d.created_by === u.id || d.user_id === u.id).length,
+    fileCount: files.filter(f => f.uploaded_by === u.id).length
+  }));
+
+  document.getElementById('dashboard-recent').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;">
+
+      <!-- Usuários recentes -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="font-size:0.95rem;margin:0;">👥 Usuários cadastrados</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAdmin()">Ver todos</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${recentUsers.map(u => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-md);">
+              <div class="user-avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(u.name)}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.name}</div>
+                <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.email}</div>
+              </div>
+              <span class="badge ${u.role==='admin'?'badge-accent':u.role==='analyst'?'badge-pink':'badge-muted'}" style="flex-shrink:0;">${u.role==='admin'?'Admin':u.role==='analyst'?'Analista':'Aluno'}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Atividade da plataforma -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="font-size:0.95rem;margin:0;">📊 Atividade por usuário</h3>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${userActivity.map(u => `
+            <div style="padding:10px;background:var(--bg-elevated);border-radius:var(--radius-md);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:13px;font-weight:600;">${u.name.split(' ')[0]}</span>
+                <span style="font-size:11px;color:var(--text-muted);">${u.role==='admin'?'Admin':u.role==='analyst'?'Analista':'Aluno'}</span>
+              </div>
+              <div style="display:flex;gap:12px;">
+                <span style="font-size:12px;color:var(--accent);">📚 ${u.discCount} disciplina${u.discCount!==1?'s':''}</span>
+                <span style="font-size:12px;color:var(--accent2);">📁 ${u.fileCount} arquivo${u.fileCount!==1?'s':''}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Últimos arquivos enviados -->
+    <div class="card" style="padding:20px;margin-top:20px;">
+      <h3 style="font-size:0.95rem;margin:0 0 16px;">📁 Últimos arquivos enviados na plataforma</h3>
+      ${recentFiles.length === 0
+        ? `<div style="font-size:13px;color:var(--text-muted);">Nenhum arquivo enviado ainda.</div>`
+        : `<div style="display:flex;flex-direction:column;gap:8px;">
+          ${recentFiles.map(f => {
+            const uploader = users.find(u => u.id === f.uploaded_by);
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-md);">
+              <div style="font-size:22px;">${fileIcon(f.type)}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
+                <div style="font-size:11px;color:var(--text-muted);">por ${uploader ? uploader.name.split(' ')[0] : 'Desconhecido'} · ${f.size} · ${formatDate(f.created_at || f.date)}</div>
+              </div>
+              <span class="badge badge-muted">${(f.type||'').toUpperCase()}</span>
+            </div>`;
+          }).join('')}
+        </div>`
+      }
+    </div>
+  `;
+}
+
+async function renderStudentDashboard() {
   const [discs, files, sems, provas, avisos] = await Promise.all([
     sbGet('disciplines'), sbGet('files'), sbGet('semesters'), sbGet('provas'), sbGet('avisos')
   ]);
