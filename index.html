@@ -1454,7 +1454,7 @@ h3 { font-size: 1.2rem; }
           <div class="page-header-top">
             <div>
               <h2 id="welcome-title">Olá! 👋</h2>
-              <p class="page-description">Aqui está um resumo dos seus estudos</p>
+              <p class="page-description" id="welcome-sub">Aqui está um resumo dos seus estudos</p>
             </div>
           </div>
         </div>
@@ -2243,6 +2243,8 @@ async function renderAdminDashboard() {
   ]);
 
   document.getElementById('welcome-title').textContent = `Painel Administrativo 🛡️`;
+  document.getElementById('welcome-sub').textContent = `Visão geral da plataforma`;
+
   document.getElementById('stats-grid').innerHTML = `
     ${statCard('👥', users.length, 'Usuários cadastrados', '#7c6af7')}
     ${statCard('📚', discs.length, 'Disciplinas criadas', '#e879a0')}
@@ -2255,7 +2257,7 @@ async function renderAdminDashboard() {
   const recentUsers = [...users].reverse().slice(0, 5);
   // Últimos arquivos enviados
   const recentFiles = [...files].reverse().slice(0, 5);
-  // Atividade por usuário
+  // Atividade por usuário — usa uploaded_by para arquivos
   const userActivity = users.map(u => ({
     ...u,
     discCount: discs.filter(d => d.created_by === u.id || d.user_id === u.id).length,
@@ -2294,7 +2296,7 @@ async function renderAdminDashboard() {
           ${userActivity.map(u => `
             <div style="padding:10px;background:var(--bg-elevated);border-radius:var(--radius-md);">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:13px;font-weight:600;">${u.name.split(' ')[0]}</span>
+                <span style="font-size:13px;font-weight:600;">${u.name}</span>
                 <span style="font-size:11px;color:var(--text-muted);">${u.role==='admin'?'Admin':u.role==='analyst'?'Analista':'Aluno'}</span>
               </div>
               <div style="display:flex;gap:12px;">
@@ -2320,7 +2322,7 @@ async function renderAdminDashboard() {
               <div style="font-size:22px;">${fileIcon(f.type)}</div>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
-                <div style="font-size:11px;color:var(--text-muted);">por ${uploader ? uploader.name.split(' ')[0] : 'Desconhecido'} · ${f.size} · ${formatDate(f.created_at || f.date)}</div>
+                <div style="font-size:11px;color:var(--text-muted);">por ${uploader ? uploader.name : 'Desconhecido'} · ${f.size} · ${formatDate(f.created_at || f.date)}</div>
               </div>
               <span class="badge badge-muted">${(f.type||'').toUpperCase()}</span>
             </div>`;
@@ -2335,6 +2337,7 @@ async function renderStudentDashboard() {
   const [discs, files, sems, provas, avisos] = await Promise.all([
     sbGet('disciplines'), sbGet('files'), sbGet('semesters'), sbGet('provas'), sbGet('avisos')
   ]);
+  document.getElementById('welcome-sub').textContent = `Aqui está um resumo dos seus estudos`;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const proximasProvas = provas.filter(p => new Date(p.data + 'T23:59:59') >= hoje);
   const statsEl = document.getElementById('stats-grid');
