@@ -2243,7 +2243,7 @@ h3 { font-size: 1.2rem; }
         Download
       </a>
     </div>
-    <iframe id="pdf-frame" class="pdf-embed" src="about:blank"></iframe>
+    <iframe id="pdf-frame" class="pdf-embed" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
   </div>
 </div>
 
@@ -3113,7 +3113,9 @@ async function openFile(id) {
 
   if (f.type === 'pdf') {
     document.getElementById('pdf-filename').textContent = f.name;
-    document.getElementById('pdf-frame').src = url;
+    // Usa Google Docs Viewer para evitar diálogo de impressão do navegador
+    const viewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true';
+    document.getElementById('pdf-frame').src = viewerUrl;
     document.getElementById('pdf-download-btn').href = url;
     document.getElementById('pdf-download-btn').download = f.name;
     document.getElementById('pdf-download-btn').style.display = (currentUser && currentUser.role === 'student') ? 'none' : '';
