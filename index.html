@@ -3871,7 +3871,7 @@ function handleAvatarUpload(input) {
   const objectUrl = URL.createObjectURL(file);
   img.onload = async () => {
     // Resize to 400x400 maintaining quality
-    const size = 800;
+    const size = 1200;
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d');
@@ -3881,7 +3881,7 @@ function handleAvatarUpload(input) {
     const sy = (img.height - min) / 2;
     ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
     URL.revokeObjectURL(objectUrl);
-    const base64 = canvas.toDataURL('image/jpeg', 1.0);
+    const base64 = canvas.toDataURL('image/png');
     DB.set(getAvatarKey(currentUser.id), base64);
     currentUser.avatar = base64;
     await sbUpdate('users', currentUser.id, { avatar: base64 });
