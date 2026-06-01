@@ -2449,14 +2449,6 @@ async function doLogin() {
   }
 }
 
-async function resetAndLogin() {
-  DB.del('session');
-  document.getElementById("login-email").value = "admin@nurvex.com";
-  document.getElementById("login-password").value = "Loading312@";
-  toast("Use admin@nurvex.com / Loading312@", "success");
-}
-
-
 function doForgot() {
   const email = document.getElementById('forgot-email').value.trim();
   if (!email) { toast('Digite seu e-mail', 'error'); return; }
