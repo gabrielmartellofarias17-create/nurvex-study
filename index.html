@@ -3855,41 +3855,36 @@ function avatarHTML(user) {
 }
 
 function renderAvatar(el, user) {
-  const photo = DB.get(getAvatarKey(user.id), null);
+  const photo = user.avatar || DB.get(getAvatarKey(user.id), null);
   if (photo) {
-    el.innerHTML = `<img src="${photo}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    el.innerHTML = `<img src="${photo}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;image-rendering:high-quality;">`;
   } else {
     el.textContent = initials(user.name);
   }
 }
 
-function handleAvatarUpload(input) {
+async function handleAvatarUpload(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { toast('Imagem muito grande! Máx. 5MB', 'error'); return; }
-  const img = new Image();
-  const objectUrl = URL.createObjectURL(file);
-  img.onload = async () => {
-    // Resize to 400x400 maintaining quality
-    const size = 1200;
-    const canvas = document.createElement('canvas');
-    canvas.width = size; canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    // Crop to square from center
-    const min = Math.min(img.width, img.height);
-    const sx = (img.width - min) / 2;
-    const sy = (img.height - min) / 2;
-    ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
-    URL.revokeObjectURL(objectUrl);
-    const base64 = canvas.toDataURL('image/png');
-    DB.set(getAvatarKey(currentUser.id), base64);
-    currentUser.avatar = base64;
-    await sbUpdate('users', currentUser.id, { avatar: base64 });
-    renderAvatar(document.getElementById('menu-avatar'), currentUser);
-    renderAvatar(document.getElementById('sidebar-avatar'), currentUser);
-    toast('Foto de perfil atualizada! ✨', 'success');
-  };
-  img.src = objectUrl;
+  
+  toast('Enviando foto...', 'info');
+  
+  const path = `avatars/${currentUser.id}_${Date.now()}.${file.name.split('.').pop()}`;
+  const { data, error } = await supa.storage.from('arquivos').upload(path, file, { upsert: true, contentType: file.type });
+  
+  if (error) { toast('Erro ao enviar foto', 'error'); return; }
+  
+  const { data: urlData } = supa.storage.from('arquivos').getPublicUrl(path);
+  const url = urlData.publicUrl;
+  
+  await sbUpdate('users', currentUser.id, { avatar: url });
+  currentUser.avatar = url;
+  DB.set(getAvatarKey(currentUser.id), url);
+  
+  renderAvatar(document.getElementById('menu-avatar'), currentUser);
+  renderAvatar(document.getElementById('sidebar-avatar'), currentUser);
+  toast('Foto atualizada! ✨', 'success');
   input.value = '';
 }
 
