@@ -2434,7 +2434,16 @@ async function doLogin() {
   if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
   try {
     const users = await sbGet('users');
-    const user = users.find(u => u.email === email && u.password === pass);
+    async function hashPassword(pass) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pass);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const hashedPass = await hashPassword(pass);
+const user = users.find(u => u.email === email && (u.password === pass || u.password === hashedPass));
     if (!user) { toast('E-mail ou senha incorretos', 'error'); return; }
     loginUser(user);
     toast('Bem-vindo de volta, ' + user.name.split(' ')[0] + '!', 'success');
