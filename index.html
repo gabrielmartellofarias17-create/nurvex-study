@@ -2427,6 +2427,11 @@ function loginUser(user) {
   updateAvisosBadge();
 }
 
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-password').value;
@@ -2434,12 +2439,8 @@ async function doLogin() {
   if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
   try {
     const users = await sbGet('users');
-    async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-const hashed = await sha256(pass);
-const user = users.find(u => u.email === email && u.password === hashed);
+    const hashed = await sha256(pass);
+    const user = users.find(u => u.email === email && u.password === hashed);
     if (!user) { toast('E-mail ou senha incorretos', 'error'); return; }
     loginUser(user);
     toast('Bem-vindo de volta, ' + user.name.split(' ')[0] + '!', 'success');
